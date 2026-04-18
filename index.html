@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seller Agent</title>
+
+<!-- Cropper.js für Bildbearbeitung -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
@@ -11,14 +16,13 @@
     --bg: #f5f7fa;
     --surface: #ffffff;
     --border: #e0e4ea;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
-    --accent-hover: #1d4ed8;
+    --accent: #16a34a; /* Kleinanzeigen Grün-Touch */
+    --accent-light: #f0fdf4;
+    --accent-hover: #15803d;
     --text: #1a202c;
     --muted: #6b7280;
     --success: #16a34a;
-    --success-light: #f0fdf4;
-    --shadow: 0 1px 4px rgba(0,0,0,0.08);
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,19 +42,26 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
-  header h1 { font-size: 1.3rem; font-weight: 600; color: var(--accent); }
-  header span { font-size: 0.85rem; color: var(--muted); }
+  header h1 { font-size: 1.4rem; font-weight: 600; color: var(--text); }
+  header span { font-size: 0.9rem; color: var(--muted); }
 
   main {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1.2fr;
     gap: 24px;
     padding: 28px 32px;
-    max-width: 1200px;
+    max-width: 1300px;
     margin: 0 auto;
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
   }
 
   .card {
@@ -59,24 +70,27 @@
     border-radius: 12px;
     padding: 24px;
     box-shadow: var(--shadow);
+    height: fit-content;
   }
 
   .card-title {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
     color: var(--muted);
-    margin-bottom: 18px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
   }
 
   label {
     display: block;
-    font-size: 0.88rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    font-weight: 600;
     color: var(--text);
-    margin-bottom: 6px;
-    margin-top: 16px;
+    margin-bottom: 8px;
+    margin-top: 20px;
   }
 
   label:first-of-type { margin-top: 0; }
@@ -88,30 +102,30 @@
     border-radius: 8px;
     color: var(--text);
     font-family: 'Inter', sans-serif;
-    font-size: 0.92rem;
+    font-size: 0.95rem;
     padding: 12px;
     resize: vertical;
     outline: none;
-    line-height: 1.6;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    line-height: 1.5;
+    transition: all 0.2s;
   }
 
   textarea:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+    background: var(--surface);
   }
 
   .photo-drop {
     width: 100%;
     border: 2px dashed var(--border);
     border-radius: 10px;
-    padding: 28px;
+    padding: 32px 20px;
     text-align: center;
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
     background: var(--bg);
-    margin-top: 6px;
   }
 
   .photo-drop:hover, .photo-drop.dragover {
@@ -124,16 +138,14 @@
     inset: 0;
     opacity: 0;
     cursor: pointer;
-    width: 100%;
-    height: 100%;
   }
 
-  .photo-drop .icon { font-size: 2rem; margin-bottom: 8px; }
-  .photo-drop p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+  .photo-drop .icon { font-size: 2.5rem; margin-bottom: 10px; }
+  .photo-drop p { font-size: 0.9rem; color: var(--muted); font-weight: 500;}
 
   #preview-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: 8px;
     margin-top: 12px;
   }
@@ -144,371 +156,721 @@
     object-fit: cover;
     border-radius: 6px;
     border: 1px solid var(--border);
+    display: block;
+  }
+
+  .img-wrapper-grid {
+    position: relative;
+    display: inline-block;
+  }
+
+  .img-actions {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    background: rgba(0,0,0,0.7);
+    padding: 4px 6px;
+    border-radius: 6px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .img-wrapper-grid:hover .img-actions {
+    opacity: 1;
+  }
+
+  .img-actions button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px;
+    transition: transform 0.1s;
+  }
+
+  .img-actions button:hover {
+    transform: scale(1.2);
   }
 
   .run-btn {
     width: 100%;
-    margin-top: 20px;
+    margin-top: 24px;
     padding: 14px;
     background: var(--accent);
     color: white;
     border: none;
     border-radius: 8px;
     font-family: 'Inter', sans-serif;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
   }
 
   .run-btn:hover { background: var(--accent-hover); }
   .run-btn:disabled { background: #9ca3af; cursor: not-allowed; }
 
   .spinner {
-    width: 16px; height: 16px;
-    border: 2px solid rgba(255,255,255,0.4);
+    width: 18px; height: 18px;
+    border: 3px solid rgba(255,255,255,0.3);
     border-top-color: white;
     border-radius: 50%;
-    animation: spin 0.7s linear infinite;
+    animation: spin 0.8s linear infinite;
     display: none;
   }
   .spinner.active { display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    padding: 4px 12px;
-    border-radius: 20px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    margin-bottom: 20px;
-  }
-  .status-pill.working { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
-  .status-pill.done { background: var(--success-light); border-color: #bbf7d0; color: var(--success); }
-
-  .field-group { margin-bottom: 18px; }
+  .field-group { margin-bottom: 20px; }
 
   .field-label {
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--muted);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
 
   .copy-btn {
-    background: none;
+    background: var(--bg);
     border: 1px solid var(--border);
-    color: var(--muted);
+    color: var(--text);
     font-family: 'Inter', sans-serif;
     font-size: 0.75rem;
-    padding: 2px 10px;
+    padding: 4px 10px;
     cursor: pointer;
     border-radius: 6px;
-    transition: all 0.15s;
-    font-weight: 500;
+    transition: all 0.2s;
+    font-weight: 600;
   }
-  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .copy-btn.copied { color: var(--success); border-color: var(--success); }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light);}
+  .copy-btn.copied { color: white; background: var(--success); border-color: var(--success); }
 
   .field-value {
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 11px 14px;
-    font-size: 0.9rem;
-    line-height: 1.7;
-    min-height: 42px;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    min-height: 46px;
     white-space: pre-wrap;
     color: var(--text);
   }
 
-  .field-value.editable { outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  .field-value.editable { outline: none; transition: all 0.2s; }
   .field-value.editable:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-    background: white;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+    background: var(--surface);
   }
-  .field-value.loading { color: var(--muted); font-style: italic; }
-  .field-value.filled { border-color: #bbf7d0; background: var(--success-light); animation: fadeIn 0.35s ease; }
-  .field-value.filled:focus { border-color: var(--accent); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  
+  .char-counter { font-size: 0.75rem; color: var(--muted); text-align: right; margin-top: 4px; }
+  .char-counter.warn { color: #d97706; }
+  .char-counter.over { color: #dc2626; font-weight: 600; }
+  .edit-hint { font-size: 0.75rem; color: var(--muted); margin-top: 4px; display: inline-block;}
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(3px); }
-    to { opacity: 1; transform: translateY(0); }
+  .row-flex {
+    display: flex;
+    gap: 16px;
+  }
+  .row-flex > div { flex: 1; }
+
+  #error-msg {
+    display: none;
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 16px;
+    font-size: 0.9rem;
   }
 
   .footer-note {
-    font-size: 0.82rem;
-    color: #1e6b3a;
-    background: var(--success-light);
-    border: 1px solid #bbf7d0;
-    border-left: 3px solid var(--success);
-    padding: 10px 14px;
-    border-radius: 6px;
-    line-height: 1.6;
-    margin-bottom: 18px;
+      font-size: 0.85rem;
+      color: var(--text);
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 12px;
   }
 
-  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+  .warning-box {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-left: 4px solid #f59e0b;
+      color: #92400e;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+  }
 
-  .copy-all-btn {
+  /* Modal Styles für Cropper & Download */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    background: var(--surface);
+    padding: 20px;
+    border-radius: 12px;
+    width: 90vw;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .crop-container {
     width: 100%;
-    padding: 12px;
-    background: none;
-    border: 2px solid var(--accent);
-    color: var(--accent);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.15s;
+    height: 60vh;
+    background: #e0e4ea;
+    border-radius: 6px;
+    overflow: hidden;
   }
-  .copy-all-btn:hover { background: var(--accent); color: white; }
 
-  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
-  .empty-state .icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
-  .empty-state p { font-size: 0.92rem; line-height: 1.8; }
+  .crop-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 
-  #output-section { display: none; }
+  .crop-btn {
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    transition: background 0.15s;
+  }
+  .crop-btn:hover { background: #e2e8f0; }
+  
+  .crop-btn.primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .crop-btn.primary:hover { background: var(--accent-hover); }
 
-  .char-counter { font-size: 0.75rem; color: var(--muted); text-align: right; margin-top: 3px; }
-  .char-counter.warn { color: #d97706; }
-  .char-counter.over { color: #dc2626; font-weight: 600; }
-  .edit-hint { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>🏷️ Seller Agent</h1>
-  <span>KI-gestützte Kleinanzeigen-Anzeigenerstellung</span>
+  <span>KI-Texter für Kleinanzeigen (Neuss)</span>
 </header>
 
 <main>
+  <!-- Linke Seite: Eingabe -->
   <div class="card">
-    <div class="card-title">Artikel eingeben</div>
+    <div class="card-title">1. Artikeldaten erfassen</div>
 
-    <label for="desc-input">Beschreibung <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-    <textarea id="desc-input" rows="4" placeholder="Z.B.: Leichte Kratzer an der Seite, funktioniert einwandfrei, 3 Jahre alt... Der Agent erkennt den Artikel auch allein anhand der Fotos."></textarea>
-
-    <label>Fotos <span style="color:var(--muted);font-weight:400">(bis zu 20 · JPG/PNG · max. 12 MB)</span></label>
+    <label>Fotos (Max 20 Stück)</label>
     <div class="photo-drop" id="photo-drop">
-      <input type="file" id="photo-input" accept="image/jpeg,image/png,image/gif" multiple>
+      <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,image/heic" multiple>
       <div class="icon">📷</div>
       <p>Fotos hierher ziehen oder klicken</p>
+      <p style="font-size: 0.75rem; margin-top: 4px;">Werden automatisch komprimiert</p>
     </div>
     <div id="preview-grid"></div>
 
+    <label for="desc-input">Zusatzinfos <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+    <textarea id="desc-input" rows="4" placeholder="Z.B.: Rechnung vorhanden, 3 Jahre alt, kleiner Kratzer unten links. Den Rest erkennt die KI auf den Bildern."></textarea>
+
     <button class="run-btn" id="run-btn" onclick="runAgent()">
       <span class="spinner" id="spinner"></span>
-      <span id="btn-text">▶ Anzeige generieren</span>
+      <span id="btn-text">Anzeige entwerfen</span>
     </button>
+    
+    <div id="error-msg"></div>
   </div>
 
+  <!-- Rechte Seite: Ausgabe -->
   <div class="card">
-    <div class="card-title">Anzeigen-Vorschau</div>
-    <div class="status-pill" id="status-pill">Bereit</div>
+    <div class="card-title">2. Entwurf prüfen & kopieren</div>
+    
+    <div id="missing-parts-warning" class="warning-box" style="display: none;"></div>
 
-    <div id="empty-state" class="empty-state">
-      <div class="icon">📋</div>
-      <p>Lade Fotos hoch und klicke auf<br>„Anzeige generieren".<br><br>Der Agent erkennt den Artikel<br>selbstständig anhand der Fotos.</p>
+    <div class="field-group">
+      <div class="field-label">Anzeigentitel <button class="copy-btn" onclick="copyEditable('out-titel', this)">Kopieren</button></div>
+      <div class="field-value editable" id="out-titel" contenteditable="true">Warte auf Eingabe...</div>
+      <div style="display: flex; justify-content: space-between;">
+          <span class="edit-hint">Klick in den Text zum Ändern</span>
+          <div class="char-counter" id="titel-counter">0 / 65</div>
+      </div>
     </div>
 
-    <div id="output-section">
-      <div class="field-group">
-        <div class="field-label">Titel <button class="copy-btn" onclick="copyEditable('out-titel', this)">Kopieren</button></div>
-        <div class="field-value editable" id="out-titel" contenteditable="true">–</div>
-        <div class="char-counter" id="titel-counter"></div>
-        <div class="edit-hint">✏️ Direkt editierbar · max. 65 Zeichen</div>
+    <div class="row-flex">
+        <div class="field-group">
+            <div class="field-label">Kategorie-Vorschlag</div>
+            <div class="field-value" id="out-rubrik">-</div>
+        </div>
+        <div class="field-group">
+            <div class="field-label">Preis / Typ</div>
+            <div class="field-value" id="out-preis">-</div>
+        </div>
+    </div>
+
+    <div class="field-group">
+        <div class="field-label">Versand-Einschätzung</div>
+        <div class="field-value" id="out-versand">-</div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Beschreibungstext <button class="copy-btn" onclick="copyEditable('out-beschreibung', this)">Kopieren</button></div>
+      <div class="field-value editable" id="out-beschreibung" contenteditable="true" style="min-height: 200px;">Warte auf Eingabe...</div>
+      <div style="display: flex; justify-content: space-between;">
+          <span class="edit-hint">Die Standard-Fußzeile (Versand/Abholung) wird automatisch angefügt.</span>
+          <div class="char-counter" id="beschreibung-counter">0 / 4000</div>
       </div>
-
-      <div class="field-group">
-        <div class="field-label">Kategorie / Rubrik</div>
-        <div class="field-value" id="out-rubrik">–</div>
+      
+      <div class="footer-note" id="footer-preview">
+          <b>Wird beim Kopieren automatisch angefügt:</b><br><br>
+          <i>- gepflegter Nichtraucherhaushalt<br>- PayPal vorhanden<br>- Abholung in 41468 Neuss, Versand bei Übernahme der Kosten möglich.<br><br>Der Verkauf erfolgt unter Ausschluss jeglicher Gewährleistung.</i>
       </div>
-
-      <div id="dynamic-fields"></div>
-
-      <div class="field-group">
-        <div class="field-label">Beschreibungstext <button class="copy-btn" onclick="copyEditable('out-beschreibung', this)">Kopieren</button></div>
-        <div class="field-value editable" id="out-beschreibung" contenteditable="true">–</div>
-        <div class="char-counter" id="beschreibung-counter"></div>
-        <div class="edit-hint">✏️ Direkt editierbar · max. 3.500 Zeichen</div>
-      </div>
-
-      <div class="footer-note">
-        ✅ Automatisch angefügt: Nichtraucherhaushalt · PayPal vorhanden · Abholung in 41468 Neuss oder Versand bei Kostenübernahme möglich
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="field-group">
-        <div class="field-label">Preisvorschlag</div>
-        <div class="field-value" id="out-preis">–</div>
-      </div>
-
-      <button class="copy-all-btn" onclick="copyAll()">📋 Alles in Zwischenablage kopieren</button>
     </div>
   </div>
 </main>
 
-<script>
-const FOOTER = '\n\nNichtraucherhaushalt, PayPal vorhanden, Abholung in 41468 Neuss oder Versand bei Kostenübernahme möglich.';
-let photoBase64 = [];
+<!-- Bildbearbeitungs-Modal -->
+<div class="modal-overlay" id="editor-modal">
+  <div class="modal-content">
+    <div class="card-title" style="margin-bottom:0; padding-bottom:0; border:none; display:flex; justify-content:space-between; align-items:center;">
+      <span>Bild zuschneiden & drehen</span>
+      <button onclick="closeEditor()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <div class="crop-container">
+      <img id="crop-image" src="" style="max-width: 100%; display: block;">
+    </div>
+    <div class="crop-actions">
+      <div style="display: flex; gap: 8px;">
+        <button class="crop-btn" onclick="cropper.rotate(-90)">↺ Links</button>
+        <button class="crop-btn" onclick="cropper.rotate(90)">↻ Rechts</button>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="crop-btn" onclick="closeEditor()">Abbrechen</button>
+        <button class="crop-btn primary" onclick="saveCrop()">✅ Speichern</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-document.getElementById('photo-input').addEventListener('change', handleFiles);
+<!-- Download-Modal (Fallback für iframe) -->
+<div class="modal-overlay" id="download-modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="card-title" style="margin-bottom:0; padding-bottom:0; border:none; display:flex; justify-content:space-between; align-items:center;">
+      <span>Bild speichern</span>
+      <button onclick="closeDownload()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✖</button>
+    </div>
+    <p style="font-size: 0.9rem; margin-bottom: 10px;">Da diese Umgebung Downloads blockieren kann, speichere das Bild einfach manuell:</p>
+    <p style="font-weight: 600; color: var(--accent); margin-bottom: 16px;">👉 Rechtsklick auf das Bild ➔ "Bild speichern unter..."</p>
+    <div style="background: #e0e4ea; padding: 10px; border-radius: 6px; text-align: center;">
+      <img id="download-image" src="" style="max-width: 100%; max-height: 45vh; border-radius: 4px; box-shadow: var(--shadow); display: inline-block;">
+    </div>
+    <button class="crop-btn primary" style="width: 100%; margin-top: 16px;" onclick="triggerAutoDownload()">Trotzdem automatischen Download versuchen</button>
+  </div>
+</div>
+
+<script>
+// --- KONFIGURATION ---
+const apiKey = ""; // Wird von der Umgebung gefüllt
+const FOOTER_TEXT = "\n\n---\n- gepflegter Nichtraucherhaushalt\n- PayPal vorhanden\n- Abholung in 41468 Neuss, Versand bei Übernahme der Kosten möglich.\n\nDer Verkauf erfolgt unter Ausschluss jeglicher Gewährleistung.";
+
+// Bilddaten-Speicher
+let processedImages = []; 
+let cropper = null;
+let currentEditIndex = -1;
+let currentDownloadIndex = -1;
+
+// --- UI LOGIK: DRAG & DROP & BILDER ---
 const drop = document.getElementById('photo-drop');
+const fileInput = document.getElementById('photo-input');
+
 drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
-drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('dragover'); handleFiles({ target: { files: e.dataTransfer.files } }); });
+drop.addEventListener('drop', e => { 
+    e.preventDefault(); 
+    drop.classList.remove('dragover'); 
+    processFiles(e.dataTransfer.files); 
+});
+fileInput.addEventListener('change', e => processFiles(e.target.files));
 
-function handleFiles(e) {
-  const files = Array.from(e.target.files).slice(0, 20);
-  photoBase64 = [];
-  document.getElementById('preview-grid').innerHTML = '';
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      photoBase64.push({ b64: ev.target.result.split(',')[1], type: file.type });
-      const img = document.createElement('img');
-      img.src = ev.target.result;
-      document.getElementById('preview-grid').appendChild(img);
-    };
-    reader.readAsDataURL(file);
-  });
+async function processFiles(files) {
+    const fileArray = Array.from(files).slice(0, 10); // Begrenzen auf 10 für API Stabilität
+
+    for (let file of fileArray) {
+        if (!file.type.match(/image.*/)) continue;
+        
+        try {
+            // Bilder komprimieren (Max 1024x1024), um API Limits nicht zu sprengen
+            const base64Data = await resizeAndConvertToBase64(file, 1024);
+            processedImages.push({
+                mimeType: "image/jpeg", // Canvas exportiert als JPEG
+                data: base64Data
+            });
+        } catch (e) {
+            console.error("Fehler beim Bild verarbeiten:", e);
+        }
+    }
+    renderGrid();
 }
 
-function updateCounter(elId, counterId, max) {
+// Grid neu zeichnen (mit Edit/Download/Delete Buttons)
+function renderGrid() {
+    const grid = document.getElementById('preview-grid');
+    grid.innerHTML = '';
+    
+    processedImages.forEach((imgObj, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'img-wrapper-grid';
+        
+        const img = document.createElement('img');
+        img.src = `data:${imgObj.mimeType};base64,${imgObj.data}`;
+        
+        const actions = document.createElement('div');
+        actions.className = 'img-actions';
+        
+        // Edit Button
+        const editBtn = document.createElement('button');
+        editBtn.innerHTML = '✏️';
+        editBtn.title = "Drehen & Zuschneiden";
+        editBtn.onclick = () => openEditor(index);
+        
+        // Download Button
+        const dlBtn = document.createElement('button');
+        dlBtn.innerHTML = '⬇️';
+        dlBtn.title = "Foto für Kleinanzeigen herunterladen";
+        dlBtn.onclick = () => downloadImg(index);
+
+        // Delete Button
+        const delBtn = document.createElement('button');
+        delBtn.innerHTML = '❌';
+        delBtn.title = "Entfernen";
+        delBtn.onclick = () => {
+            processedImages.splice(index, 1);
+            renderGrid();
+        };
+        
+        actions.appendChild(editBtn);
+        actions.appendChild(dlBtn);
+        actions.appendChild(delBtn);
+        
+        wrapper.appendChild(img);
+        wrapper.appendChild(actions);
+        grid.appendChild(wrapper);
+    });
+}
+
+// --- BILD-EDITOR LOGIK ---
+function openEditor(index) {
+    currentEditIndex = index;
+    const modal = document.getElementById('editor-modal');
+    const image = document.getElementById('crop-image');
+    
+    modal.style.display = 'flex';
+    
+    if (cropper) {
+        cropper.destroy();
+        cropper = null;
+    }
+    
+    // Warte, bis das Bild im Modal geladen ist, bevor der Cropper startet
+    image.onload = () => {
+        cropper = new Cropper(image, {
+            viewMode: 2, // Beschränkt Zuschnitt auf Bildgrenzen
+            autoCropArea: 1,
+            responsive: true,
+            background: false
+        });
+        image.onload = null; // Event-Listener wieder aufräumen
+    };
+    
+    image.src = `data:${processedImages[index].mimeType};base64,${processedImages[index].data}`;
+}
+
+function closeEditor() {
+    document.getElementById('editor-modal').style.display = 'none';
+    if (cropper) {
+        cropper.destroy();
+        cropper = null;
+    }
+}
+
+function saveCrop() {
+    if (!cropper) return;
+    
+    // Neues Bild berechnen (max 1024px um Limits einzuhalten)
+    const canvas = cropper.getCroppedCanvas({ 
+        maxWidth: 1024, 
+        maxHeight: 1024,
+        fillColor: '#fff' // Verhindert schwarze Ränder/Abstürze bei PNGs
+    });
+
+    if (!canvas) {
+        alert("Fehler beim Verarbeiten des Bildes. Bitte erneut versuchen.");
+        return;
+    }
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // Im Speicher aktualisieren
+    processedImages[currentEditIndex].data = dataUrl.split(',')[1];
+    
+    closeEditor();
+    renderGrid();
+}
+
+function downloadImg(index) {
+    currentDownloadIndex = index;
+    const imgObj = processedImages[index];
+    document.getElementById('download-image').src = `data:${imgObj.mimeType};base64,${imgObj.data}`;
+    document.getElementById('download-modal').style.display = 'flex';
+    
+    // Den unsichtbaren Klick trotzdem ausführen (für die spätere lokale Nutzung)
+    triggerAutoDownload();
+}
+
+function closeDownload() {
+    document.getElementById('download-modal').style.display = 'none';
+}
+
+function triggerAutoDownload() {
+    if(currentDownloadIndex === -1) return;
+    const imgObj = processedImages[currentDownloadIndex];
+    const link = document.createElement('a');
+    link.href = `data:${imgObj.mimeType};base64,${imgObj.data}`;
+    link.download = `artikelfoto_${currentDownloadIndex + 1}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Hilfsfunktion: Bild im Browser verkleinern (Client-seitig)
+function resizeAndConvertToBase64(file, maxSize) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxSize) {
+                        height *= maxSize / width;
+                        width = maxSize;
+                    }
+                } else {
+                    if (height > maxSize) {
+                        width *= maxSize / height;
+                        height = maxSize;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Als JPEG exportieren (Qualität 0.8) und "data:image/jpeg;base64," abschneiden
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                resolve(dataUrl.split(',')[1]); 
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// --- ZEICHENZÄHLER ---
+function initCounter(elId, counterId, max) {
   const el = document.getElementById(elId);
   const counter = document.getElementById(counterId);
-  if (!el || !counter) return;
   const update = () => {
-    const len = el.innerText.length;
-    counter.textContent = len + ' / ' + max + ' Zeichen';
-    counter.className = 'char-counter' + (len > max ? ' over' : len > max * 0.88 ? ' warn' : '');
+    let text = el.innerText;
+    if(elId === 'out-beschreibung') {
+        text += FOOTER_TEXT; // Footer wird mitgerechnet
+    }
+    const len = text.length;
+    counter.textContent = `${len} / ${max}`;
+    counter.className = 'char-counter' + (len > max ? ' over' : len > max * 0.9 ? ' warn' : '');
   };
   el.addEventListener('input', update);
   update();
 }
+initCounter('out-titel', 'titel-counter', 65);
+initCounter('out-beschreibung', 'beschreibung-counter', 4000);
 
+// --- KOPIEREN ---
+function copyEditable(id, btn) {
+  let text = document.getElementById(id).innerText;
+  if(id === 'out-beschreibung') {
+      text += FOOTER_TEXT;
+  }
+  
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Kopiert';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// --- API AUFRUF (GEMINI) ---
 async function runAgent() {
   const desc = document.getElementById('desc-input').value.trim();
-  if (!desc && photoBase64.length === 0) {
-    alert('Bitte mindestens ein Foto hochladen oder eine Beschreibung eingeben.');
+  const errorMsg = document.getElementById('error-msg');
+  
+  if (!desc && processedImages.length === 0) {
+    errorMsg.textContent = 'Bitte mindestens ein Foto hochladen oder eine Beschreibung eingeben.';
+    errorMsg.style.display = 'block';
     return;
   }
 
-  setStatus('working', '⏳ Analysiere…');
+  errorMsg.style.display = 'none';
   const btn = document.getElementById('run-btn');
   btn.disabled = true;
   document.getElementById('spinner').classList.add('active');
-  document.getElementById('btn-text').textContent = 'Analysiere…';
-  document.getElementById('empty-state').style.display = 'none';
-  document.getElementById('output-section').style.display = 'block';
-  setLoadingAll();
+  document.getElementById('btn-text').textContent = 'KI analysiert...';
 
-  const sys = `Du bist ein Experte fuer Kleinanzeigen.de-Inserate in Deutschland. Analysiere den Artikel anhand der Fotos und/oder Beschreibung. Erkenne was es ist, auch ohne Textbeschreibung. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt. Kein Text davor oder danach. Keine Markdown-Backticks. Keine Kommentare im JSON. Felder: rubrik (Kategoriepfad), titel (max 65 Zeichen suchoptimiert), preis_vorschlag, preisbegruendung (1-2 Saetze), felder (Array label+wert 3-5 Stueck), beschreibung (3-5 Saetze max 3200 Zeichen ohne Footer). Rubrikspezifische Felder - Elektronik: Zustand/Marke/Modell/Farbe/Speicher/Zubehoer. Moebel: Zustand/Masse/Material/Farbe/Abbau. Kleidung: Zustand/Marke/Groesse/Farbe. Buecher: Zustand/Autor/Jahr. Sport: Zustand/Marke/Groesse. Spielzeug: Zustand/Alter/Vollstaendigkeit.`;
+  document.getElementById('out-titel').innerText = 'Wird generiert...';
+  document.getElementById('out-beschreibung').innerText = 'Wird generiert...';
+  document.getElementById('out-rubrik').innerText = '...';
+  document.getElementById('out-preis').innerText = '...';
+  document.getElementById('out-versand').innerText = '...';
+  document.getElementById('missing-parts-warning').style.display = 'none';
 
-  const content = [];
-  photoBase64.slice(0, 4).forEach(p => content.push({ type: "image", source: { type: "base64", media_type: p.type, data: p.b64 } }));
-  content.push({ type: "text", text: desc ? 'Zusaetzliche Hinweise: ' + desc : 'Analysiere die Fotos und erstelle ein Kleinanzeigen-Inserat.' });
+  // Exponential Backoff Retry Logic
+  const maxRetries = 5;
+  const delays = [1000, 2000, 4000, 8000, 16000];
+  let attempt = 0;
+  let success = false;
+  let responseData = null;
 
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 1200, system: sys, messages: [{ role: "user", content }] })
-    });
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  
+  const systemPrompt = `Du bist ein privater Verkäufer auf Kleinanzeigen.de aus Neuss. 
+Analysiere die Bilder und die Nutzernotizen. Erstelle ein Inserat.
 
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+WICHTIGSTE REGEL: Schreibe extrem natürlich und authentisch, wie ein normaler Mensch. KEINE Werbesprache, KEINE typischen KI-Wörter (wie "perfekt", "hochwertig", "revolutionär", "Tauchen Sie ein").
 
-    const raw = data.content?.[0]?.text || '';
-    const match = raw.replace(/```json|```/gi, '').match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('Kein JSON erhalten. Antwort: ' + raw.slice(0, 150));
-    const j = JSON.parse(match[0]);
+Regeln:
+- titel: Maximal 65 Zeichen, sachlich und suchmaschinenoptimiert (Marke, Modell, wichtigstes Merkmal). Keine Sonderzeichen wie ⭐.
+- kategorie: Welcher Kategorie-Pfad passt am besten?
+- beschreibung: Erstelle eine kurze, persönliche Einleitung (1-2 Sätze). Mache DANN EINEN ABSATZ (Zeilenumbruch) und liste danach die wichtigsten Fakten, Maße und Merkmale übersichtlich auf. JEDER Bindestrich (-) MUSS in einer neuen Zeile stehen! Lass Infos zu Versand/Abholung weg, diese werden vom System separat angefügt! WICHTIG: Wenn es sich bei dem Artikel um Kleidung handelt, füge ZWINGEND als letzten Aufzählungspunkt in einer neuen Zeile "- frisch gewaschen" hinzu.
+- preis: Gib eine realistische Zahlungsgröße an (nur die Zahl).
+- preistyp: Wähle aus "Festpreis", "VB" oder "Zu verschenken".
+- fehlteile_hinweis: WICHTIG! Prüfe, ob bei dem Artikel normalerweise Zubehör dabei ist (z.B. Ladekabel, Fernbedienung, Spielsteine). Vergleiche dies mit den Bildern/Notizen. Fehlt etwas offensichtlich? Schreibe einen kurzen Warnhinweis an den Verkäufer (z.B. "Achtung: Es ist kein Ladekabel zu sehen. Kläre im Text, ob es fehlt."). Wenn alles komplett scheint, gib einen leeren String "" zurück.
+- versand_vorschlag: Schätze anhand der Bilder die Größe und das Gewicht des Artikels. Gib eine konkrete und realistische Versandmethode mit geschätzten Kosten an (z.B. "Großbrief (1,60 €)", "Bücher- und Warensendung (2,25 €)", "DHL Paket 2kg (5,49 €)" oder "Aufgrund der Größe: Nur Abholung").`;
 
-    setEditable('out-titel', j.titel || '–');
-    setField('out-rubrik', j.rubrik || '–');
-    setEditable('out-beschreibung', (j.beschreibung || '–') + FOOTER);
-    setField('out-preis', (j.preis_vorschlag || '–') + (j.preisbegruendung ? '\n→ ' + j.preisbegruendung : ''));
+  const payload = {
+      contents: [{
+          parts: [
+              { text: systemPrompt + "\n\nZusätzliche Notizen des Verkäufers:\n" + (desc || "Keine Notizen vorhanden.") },
+              ...processedImages.map(img => ({
+                  inlineData: {
+                      mimeType: img.mimeType,
+                      data: img.data
+                  }
+              }))
+          ]
+      }],
+      generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+              type: "OBJECT",
+              properties: {
+                  titel: { type: "STRING" },
+                  kategorie: { type: "STRING" },
+                  beschreibung: { type: "STRING" },
+                  preis: { type: "NUMBER" },
+                  preistyp: { type: "STRING" },
+                  fehlteile_hinweis: { type: "STRING" },
+                  versand_vorschlag: { type: "STRING" }
+              },
+              required: ["titel", "kategorie", "beschreibung", "preis", "preistyp", "fehlteile_hinweis", "versand_vorschlag"]
+          }
+      }
+  };
 
-    updateCounter('out-titel', 'titel-counter', 65);
-    updateCounter('out-beschreibung', 'beschreibung-counter', 3500);
+  while (attempt < maxRetries && !success) {
+      try {
+          const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+          });
 
-    const dyn = document.getElementById('dynamic-fields');
-    dyn.innerHTML = '';
-    (j.felder || []).forEach((f, i) => {
-      dyn.innerHTML += `<div class="field-group"><div class="field-label">${esc(f.label)}</div><div class="field-value filled" id="dyn${i}">${esc(f.wert)}</div></div>`;
-    });
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          
+          const result = await res.json();
+          responseData = JSON.parse(result.candidates[0].content.parts[0].text);
+          success = true;
 
-    setStatus('done', '✅ Fertig — alle Felder editierbar');
+      } catch (err) {
+          attempt++;
+          if (attempt >= maxRetries) {
+              errorMsg.textContent = 'Verbindungsfehler zur KI nach mehreren Versuchen. Bitte versuche es später noch einmal.';
+              errorMsg.style.display = 'block';
+              console.error(err);
+          } else {
+              await new Promise(resolve => setTimeout(resolve, delays[attempt - 1]));
+          }
+      }
+  }
 
-  } catch(err) {
-    setStatus('', '❌ ' + err.message);
-    setEditable('out-titel', 'Fehler: ' + err.message);
+  // UI Update nach Erfolg
+  if (success && responseData) {
+      document.getElementById('out-titel').innerText = responseData.titel;
+      document.getElementById('out-rubrik').innerText = responseData.kategorie;
+      document.getElementById('out-preis').innerText = responseData.preis + ' € (' + responseData.preistyp + ')';
+      document.getElementById('out-versand').innerText = responseData.versand_vorschlag;
+      document.getElementById('out-beschreibung').innerText = responseData.beschreibung;
+      
+      const warnBox = document.getElementById('missing-parts-warning');
+      if (responseData.fehlteile_hinweis && responseData.fehlteile_hinweis.trim() !== "") {
+          warnBox.innerHTML = `<strong>⚠️ Hinweis zum Lieferumfang:</strong><br>${responseData.fehlteile_hinweis}`;
+          warnBox.style.display = 'block';
+      } else {
+          warnBox.style.display = 'none';
+      }
+
+      // Counter manuell triggern
+      document.getElementById('out-titel').dispatchEvent(new Event('input'));
+      document.getElementById('out-beschreibung').dispatchEvent(new Event('input'));
   }
 
   btn.disabled = false;
   document.getElementById('spinner').classList.remove('active');
-  document.getElementById('btn-text').textContent = '▶ Neu generieren';
-}
-
-function setStatus(cls, text) {
-  const el = document.getElementById('status-pill');
-  el.textContent = text;
-  el.className = 'status-pill' + (cls ? ' ' + cls : '');
-}
-
-function setLoadingAll() {
-  ['out-rubrik','out-preis'].forEach(id => { const el = document.getElementById(id); el.textContent = 'Wird generiert…'; el.className = 'field-value loading'; });
-  ['out-titel','out-beschreibung'].forEach(id => { const el = document.getElementById(id); el.innerText = 'Wird generiert…'; el.className = 'field-value editable loading'; });
-  document.getElementById('dynamic-fields').innerHTML = '';
-}
-
-function setField(id, text) { const el = document.getElementById(id); el.textContent = text; el.className = 'field-value filled'; }
-function setEditable(id, text) { const el = document.getElementById(id); el.innerText = text; el.className = 'field-value editable filled'; }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function copyEditable(id, btn) {
-  const text = document.getElementById(id).innerText;
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.textContent;
-    btn.textContent = '✓ Kopiert!';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
-  });
-}
-
-function copyAll() {
-  const parts = [];
-  const addE = (l, id) => { const t = document.getElementById(id)?.innerText; if (t && t !== '–') parts.push('=== ' + l + ' ===\n' + t); };
-  const addT = (l, id) => { const t = document.getElementById(id)?.textContent; if (t && t !== '–') parts.push('=== ' + l + ' ===\n' + t); };
-  addE('TITEL', 'out-titel');
-  addT('RUBRIK', 'out-rubrik');
-  document.querySelectorAll('#dynamic-fields .field-group').forEach(g => {
-    parts.push('=== ' + g.querySelector('.field-label').textContent.trim() + ' ===\n' + g.querySelector('.field-value').textContent);
-  });
-  addE('BESCHREIBUNG', 'out-beschreibung');
-  addT('PREIS', 'out-preis');
-  navigator.clipboard.writeText(parts.join('\n\n')).then(() => {
-    const btn = document.querySelector('.copy-all-btn');
-    btn.textContent = '✓ Kopiert!';
-    setTimeout(() => { btn.textContent = '📋 Alles in Zwischenablage kopieren'; }, 2000);
-  });
+  document.getElementById('btn-text').textContent = 'Neue Anzeige generieren';
 }
 </script>
 </body>
