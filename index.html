@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seller Agent</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #f5f7fa;
+    --surface: #ffffff;
+    --border: #e0e4ea;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --accent-hover: #1d4ed8;
+    --text: #1a202c;
+    --muted: #6b7280;
+    --success: #16a34a;
+    --success-light: #f0fdf4;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow);
+  }
+
+  header h1 { font-size: 1.3rem; font-weight: 600; color: var(--accent); }
+  header span { font-size: 0.85rem; color: var(--muted); }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    padding: 28px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+
+  label:first-of-type { margin-top: 0; }
+
+  textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    padding: 12px;
+    resize: vertical;
+    outline: none;
+    line-height: 1.6;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+
+  .photo-drop {
+    width: 100%;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    background: var(--bg);
+    margin-top: 6px;
+  }
+
+  .photo-drop:hover, .photo-drop.dragover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .photo-drop input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .photo-drop .icon { font-size: 2rem; margin-bottom: 8px; }
+  .photo-drop p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+
+  #preview-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  #preview-grid img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .run-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .run-btn:hover { background: var(--accent-hover); }
+  .run-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .spinner.active { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .status-pill.working { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+  .status-pill.done { background: var(--success-light); border-color: #bbf7d0; color: var(--success); }
+
+  .field-group { margin-bottom: 18px; }
+
+  .field-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    padding: 2px 10px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { color: var(--success); border-color: var(--success); }
+
+  .field-value {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    min-height: 42px;
+    white-space: pre-wrap;
+    color: var(--text);
+  }
+
+  .field-value.editable { outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  .field-value.editable:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    background: white;
+  }
+  .field-value.loading { color: var(--muted); font-style: italic; }
+  .field-value.filled { border-color: #bbf7d0; background: var(--success-light); animation: fadeIn 0.35s ease; }
+  .field-value.filled:focus { border-color: var(--accent); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .footer-note {
+    font-size: 0.82rem;
+    color: #1e6b3a;
+    background: var(--success-light);
+    border: 1px solid #bbf7d0;
+    border-left: 3px solid var(--success);
+    padding: 10px 14px;
+    border-radius: 6px;
+    line-height: 1.6;
+    margin-bottom: 18px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+  .copy-all-btn {
+    width: 100%;
+    padding: 12px;
+    background: none;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+  }
+  .copy-all-btn:hover { background: var(--accent); color: white; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+  .empty-state p { font-size: 0.92rem; line-height: 1.8; }
+
+  #output-section { display: none; }
+
+  .char-counter { font-size: 0.75rem; color: var(--muted); text-align: right; margin-top: 3px; }
+  .char-counter.warn { color: #d97706; }
+  .char-counter.over { color: #dc2626; font-weight: 600; }
+  .edit-hint { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏷️ Seller Agent</h1>
+  <span>KI-gestützte Kleinanzeigen-Anzeigenerstellung</span>
+</header>
+
+<main>
+  <div class="card">
+    <div class="card-title">Artikel eingeben</div>
+
+    <label for="desc-input">Beschreibung <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+    <textarea id="desc-input" rows="4" placeholder="Z.B.: Leichte Kratzer an der Seite, funktioniert einwandfrei, 3 Jahre alt... Der Agent erkennt den Artikel auch allein anhand der Fotos."></textarea>
+
+    <label>Fotos <span style="color:var(--muted);font-weight:400">(bis zu 20 · JPG/PNG · max. 12 MB)</span></label>
+    <div class="photo-drop" id="photo-drop">
+      <input type="file" id="photo-input" accept="image/jpeg,image/png,image/gif" multiple>
+      <div class="icon">📷</div>
+      <p>Fotos hierher ziehen oder klicken</p>
+    </div>
+    <div id="preview-grid"></div>
+
+    <button class="run-btn" id="run-btn" onclick="runAgent()">
+      <span class="spinner" id="spinner"></span>
+      <span id="btn-text">▶ Anzeige generieren</span>
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Anzeigen-Vorschau</div>
+    <div class="status-pill" id="status-pill">Bereit</div>
+
+    <div id="empty-state" class="empty-state">
+      <div class="icon">📋</div>
+      <p>Lade Fotos hoch und klicke auf<br>„Anzeige generieren".<br><br>Der Agent erkennt den Artikel<br>selbstständig anhand der Fotos.</p>
+    </div>
+
+    <div id="output-section">
+      <div class="field-group">
+        <div class="field-label">Titel <button class="copy-btn" onclick="copyEditable('out-titel', this)">Kopieren</button></div>
+        <div class="field-value editable" id="out-titel" contenteditable="true">–</div>
+        <div class="char-counter" id="titel-counter"></div>
+        <div class="edit-hint">✏️ Direkt editierbar · max. 65 Zeichen</div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Kategorie / Rubrik</div>
+        <div class="field-value" id="out-rubrik">–</div>
+      </div>
+
+      <div id="dynamic-fields"></div>
+
+      <div class="field-group">
+        <div class="field-label">Beschreibungstext <button class="copy-btn" onclick="copyEditable('out-beschreibung', this)">Kopieren</button></div>
+        <div class="field-value editable" id="out-beschreibung" contenteditable="true">–</div>
+        <div class="char-counter" id="beschreibung-counter"></div>
+        <div class="edit-hint">✏️ Direkt editierbar · max. 3.500 Zeichen</div>
+      </div>
+
+      <div class="footer-note">
+        ✅ Automatisch angefügt: Nichtraucherhaushalt · PayPal vorhanden · Abholung in 41468 Neuss oder Versand bei Kostenübernahme möglich
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field-group">
+        <div class="field-label">Preisvorschlag</div>
+        <div class="field-value" id="out-preis">–</div>
+      </div>
+
+      <button class="copy-all-btn" onclick="copyAll()">📋 Alles in Zwischenablage kopieren</button>
+    </div>
+  </div>
+</main>
+
+<script>
+const FOOTER = '\n\nNichtraucherhaushalt, PayPal vorhanden, Abholung in 41468 Neuss oder Versand bei Kostenübernahme möglich.';
+let photoBase64 = [];
+
+document.getElementById('photo-input').addEventListener('change', handleFiles);
+const drop = document.getElementById('photo-drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('dragover'); handleFiles({ target: { files: e.dataTransfer.files } }); });
+
+function handleFiles(e) {
+  const files = Array.from(e.target.files).slice(0, 20);
+  photoBase64 = [];
+  document.getElementById('preview-grid').innerHTML = '';
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      photoBase64.push({ b64: ev.target.result.split(',')[1], type: file.type });
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      document.getElementById('preview-grid').appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateCounter(elId, counterId, max) {
+  const el = document.getElementById(elId);
+  const counter = document.getElementById(counterId);
+  if (!el || !counter) return;
+  const update = () => {
+    const len = el.innerText.length;
+    counter.textContent = len + ' / ' + max + ' Zeichen';
+    counter.className = 'char-counter' + (len > max ? ' over' : len > max * 0.88 ? ' warn' : '');
+  };
+  el.addEventListener('input', update);
+  update();
+}
+
+async function runAgent() {
+  const desc = document.getElementById('desc-input').value.trim();
+  if (!desc && photoBase64.length === 0) {
+    alert('Bitte mindestens ein Foto hochladen oder eine Beschreibung eingeben.');
+    return;
+  }
+
+  setStatus('working', '⏳ Analysiere…');
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  document.getElementById('spinner').classList.add('active');
+  document.getElementById('btn-text').textContent = 'Analysiere…';
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('output-section').style.display = 'block';
+  setLoadingAll();
+
+  const sys = `Du bist ein Experte fuer Kleinanzeigen.de-Inserate in Deutschland. Analysiere den Artikel anhand der Fotos und/oder Beschreibung. Erkenne was es ist, auch ohne Textbeschreibung. Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt. Kein Text davor oder danach. Keine Markdown-Backticks. Keine Kommentare im JSON. Felder: rubrik (Kategoriepfad), titel (max 65 Zeichen suchoptimiert), preis_vorschlag, preisbegruendung (1-2 Saetze), felder (Array label+wert 3-5 Stueck), beschreibung (3-5 Saetze max 3200 Zeichen ohne Footer). Rubrikspezifische Felder - Elektronik: Zustand/Marke/Modell/Farbe/Speicher/Zubehoer. Moebel: Zustand/Masse/Material/Farbe/Abbau. Kleidung: Zustand/Marke/Groesse/Farbe. Buecher: Zustand/Autor/Jahr. Sport: Zustand/Marke/Groesse. Spielzeug: Zustand/Alter/Vollstaendigkeit.`;
+
+  const content = [];
+  photoBase64.slice(0, 4).forEach(p => content.push({ type: "image", source: { type: "base64", media_type: p.type, data: p.b64 } }));
+  content.push({ type: "text", text: desc ? 'Zusaetzliche Hinweise: ' + desc : 'Analysiere die Fotos und erstelle ein Kleinanzeigen-Inserat.' });
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 1200, system: sys, messages: [{ role: "user", content }] })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const raw = data.content?.[0]?.text || '';
+    const match = raw.replace(/```json|```/gi, '').match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Kein JSON erhalten. Antwort: ' + raw.slice(0, 150));
+    const j = JSON.parse(match[0]);
+
+    setEditable('out-titel', j.titel || '–');
+    setField('out-rubrik', j.rubrik || '–');
+    setEditable('out-beschreibung', (j.beschreibung || '–') + FOOTER);
+    setField('out-preis', (j.preis_vorschlag || '–') + (j.preisbegruendung ? '\n→ ' + j.preisbegruendung : ''));
+
+    updateCounter('out-titel', 'titel-counter', 65);
+    updateCounter('out-beschreibung', 'beschreibung-counter', 3500);
+
+    const dyn = document.getElementById('dynamic-fields');
+    dyn.innerHTML = '';
+    (j.felder || []).forEach((f, i) => {
+      dyn.innerHTML += `<div class="field-group"><div class="field-label">${esc(f.label)}</div><div class="field-value filled" id="dyn${i}">${esc(f.wert)}</div></div>`;
+    });
+
+    setStatus('done', '✅ Fertig — alle Felder editierbar');
+
+  } catch(err) {
+    setStatus('', '❌ ' + err.message);
+    setEditable('out-titel', 'Fehler: ' + err.message);
+  }
+
+  btn.disabled = false;
+  document.getElementById('spinner').classList.remove('active');
+  document.getElementById('btn-text').textContent = '▶ Neu generieren';
+}
+
+function setStatus(cls, text) {
+  const el = document.getElementById('status-pill');
+  el.textContent = text;
+  el.className = 'status-pill' + (cls ? ' ' + cls : '');
+}
+
+function setLoadingAll() {
+  ['out-rubrik','out-preis'].forEach(id => { const el = document.getElementById(id); el.textContent = 'Wird generiert…'; el.className = 'field-value loading'; });
+  ['out-titel','out-beschreibung'].forEach(id => { const el = document.getElementById(id); el.innerText = 'Wird generiert…'; el.className = 'field-value editable loading'; });
+  document.getElementById('dynamic-fields').innerHTML = '';
+}
+
+function setField(id, text) { const el = document.getElementById(id); el.textContent = text; el.className = 'field-value filled'; }
+function setEditable(id, text) { const el = document.getElementById(id); el.innerText = text; el.className = 'field-value editable filled'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function copyEditable(id, btn) {
+  const text = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Kopiert!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+function copyAll() {
+  const parts = [];
+  const addE = (l, id) => { const t = document.getElementById(id)?.innerText; if (t && t !== '–') parts.push('=== ' + l + ' ===\n' + t); };
+  const addT = (l, id) => { const t = document.getElementById(id)?.textContent; if (t && t !== '–') parts.push('=== ' + l + ' ===\n' + t); };
+  addE('TITEL', 'out-titel');
+  addT('RUBRIK', 'out-rubrik');
+  document.querySelectorAll('#dynamic-fields .field-group').forEach(g => {
+    parts.push('=== ' + g.querySelector('.field-label').textContent.trim() + ' ===\n' + g.querySelector('.field-value').textContent);
+  });
+  addE('BESCHREIBUNG', 'out-beschreibung');
+  addT('PREIS', 'out-preis');
+  navigator.clipboard.writeText(parts.join('\n\n')).then(() => {
+    const btn = document.querySelector('.copy-all-btn');
+    btn.textContent = '✓ Kopiert!';
+    setTimeout(() => { btn.textContent = '📋 Alles in Zwischenablage kopieren'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>
